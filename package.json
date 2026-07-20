@@ -18,7 +18,7 @@
     "@types/node": "^26.1.1",
     "electron": "^43.1.1",
     "qwqnt-ipc-interceptor": "github:qwqnt-community/qwqnt-ipc-interceptor",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "^8.1.5"
   },
   "packageManager": "pnpm@11.2.2",
@@ -30,6 +30,7 @@
       "renderer": "./dist/renderer/index.js"
     },
     "dependencies": {
+      "qwqnt-hako": "^1.0.0",
       "qwqnt-ipc-interceptor": "^1.2.0"
     }
   }

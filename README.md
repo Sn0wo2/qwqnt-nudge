@@ -1,17 +1,19 @@
 # qwqnt-nudge
 
-QwQNT plugin for automatic poke-back and double-click avatar pokes.
+A plugin that provides automatic poke-back and double-click avatar pokes for QwQNT.
 
 ## Features
 
-- Automatically replies to incoming private-chat pokes.
+- Automatically replies to incoming private & group chat pokes.
 - Configurable reply cooldown and maximum consecutive replies.
 - Double-click a message avatar to send a poke in private and group chats.
 
 ## Prerequisites
 
+- QQNT >= `v9.9.32.50776`
 - QwQNT framework
-- [`qwqnt-ipc-interceptor`](https://github.com/qwqnt-community/qwqnt-ipc-interceptor) 1.2.0 or newer
+- [`qwqnt-ipc-interceptor`](https://github.com/qwqnt-community/qwqnt-ipc-interceptor) >= `1.2.0`
+- [`qwqnt-hako`](https://github.com/qwqnt-community/qwqnt-hako) >= `1.0.0`
 
 The prerequisite plugin must be installed in the same QwQNT plugins directory. It is declared in `qwqnt.dependencies`.
 
