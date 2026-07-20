@@ -23,27 +23,6 @@ The prerequisite plugin must be installed in the same QwQNT plugins directory. I
 3. Restart QQ.
 4. Open QQ settings and find `Nudge`.
 
-## Build
-
-```bash
-pnpm install --frozen-lockfile
-pnpm run typecheck
-pnpm run build
-```
-
-The build output is a complete plugin under `dist/`.
-
-## Release
-
-Push a version tag to create a GitHub Release with GoReleaser:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The tag version is written to the release `package.json` automatically. The source `package.json` is not modified.
-
 ## Feedback
 
 Report issues at <https://github.com/Sn0wo2/qwqnt-nudge/issues>.
