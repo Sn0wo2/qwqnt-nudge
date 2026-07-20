@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/qwqnt-community/types/main/plugin.schema.json",
+  "name": "qwqnt-nudge",
+  "version": "0.0.0",
+  "description": "Nudge auto-reply & double-click poke",
+  "type": "commonjs",
+  "scripts": {
+    "build": "vite build --mode main && vite build --mode preload && vite build --mode renderer && node scripts/package.cjs"
+  },
+  "author": "Sn0wo2",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@qwqnt-community/hako-types": "github:qwqnt-community/plugin-types#hako",
+    "@qwqnt/types": "github:qwqnt-community/types",
+    "@types/node": "^26.1.1",
+    "electron": "^43.1.1",
+    "qwqnt-ipc-interceptor": "github:qwqnt-community/qwqnt-ipc-interceptor",
+    "vite": "^8.0.14"
+  },
+  "packageManager": "pnpm@11.2.2",
+  "qwqnt": {
+    "name": "Nudge",
+    "inject": {
+      "main": "./dist/main/index.js",
+      "preload": "./dist/preload/index.js",
+      "renderer": "./dist/renderer/index.js"
+    },
+    "dependencies": {
+      "qwqnt-ipc-interceptor": "^1.2.0"
+    }
+  }
+}

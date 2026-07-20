@@ -1,0 +1,12 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+  "include": [
+    "src/renderer/**/*",
+    "src/preload/**/*",
+    "src/global.d.ts"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "types": ["@qwqnt/types/preload", "@qwqnt/types/renderer", "@qwqnt-community/hako-types/preload", "@qwqnt-community/hako-types/renderer"]
+  }
+}
