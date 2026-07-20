@@ -11,7 +11,7 @@ QwQNT plugin for automatic poke-back and double-click avatar pokes.
 ## Prerequisites
 
 - QwQNT framework
-- `qwqnt-ipc-interceptor` 1.2.0 or newer
+- [`qwqnt-ipc-interceptor`](https://github.com/qwqnt-community/qwqnt-ipc-interceptor) 1.2.0 or newer
 
 The prerequisite plugin must be installed in the same QwQNT plugins directory. It is declared in `qwqnt.dependencies`.
 
