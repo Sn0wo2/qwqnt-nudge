@@ -19,7 +19,7 @@ const configs = {
   main: defineConfig({
     ...BaseConfig,
     build: {
-      minify: false,
+      minify: true,
       ssr: true,
       outDir: resolve(__dirname, "./dist/main"),
       lib: {
@@ -34,7 +34,7 @@ const configs = {
   preload: defineConfig({
     ...BaseConfig,
     build: {
-      minify: false,
+      minify: true,
       outDir: resolve(__dirname, "./dist/preload"),
       lib: {
         entry: resolve(SRC_DIR, "./preload/index.ts"),
@@ -47,7 +47,7 @@ const configs = {
   renderer: defineConfig({
     ...BaseConfig,
     build: {
-      minify: false,
+      minify: true,
       outDir: resolve(__dirname, "./dist/renderer"),
       lib: {
         entry: resolve(SRC_DIR, "./renderer/index.ts"),

@@ -2,9 +2,6 @@ version: 2
 project_name: qwqnt-nudge
 dist: .goreleaser-dist
 
-before:
-  hooks: []
-
 builds:
   - skip: true
 
@@ -26,9 +23,6 @@ archives:
       - src: dist/LICENSE
         dst: LICENSE
     name_template: "{{ .ProjectName }}-v{{ .Version }}"
-
-checksum:
-  disable: true
 
 release:
   github:
