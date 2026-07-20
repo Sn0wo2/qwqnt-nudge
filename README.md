@@ -7,7 +7,6 @@ QwQNT plugin for automatic poke-back and double-click avatar pokes.
 - Automatically replies to incoming private-chat pokes.
 - Configurable reply cooldown and maximum consecutive replies.
 - Double-click a message avatar to send a poke in private and group chats.
-- Chinese settings page integrated into QQ settings.
 
 ## Prerequisites
 
@@ -30,3 +29,8 @@ Report issues at <https://github.com/Sn0wo2/qwqnt-nudge/issues>.
 ## License
 
 Apache-2.0. See [LICENSE](./LICENSE).
+
+## Thanks
+
+- [QwQNT-PluginTemplate-Vite-pnpm](https://github.com/adproqwq/QwQNT-PluginTemplate-Vite-pnpm/)
+- [QQNT-Toolbox](https://github.com/MeiYongAI/QQNT-Toolbox)
