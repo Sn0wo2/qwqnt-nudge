@@ -5,6 +5,9 @@ const ROOT = path.resolve(__dirname, "..");
 const DIST = path.join(ROOT, "dist");
 const pkgRaw = fs.readFileSync(path.join(ROOT, "package.json"), "utf8");
 const pkg = JSON.parse(pkgRaw);
+const releaseVersion = process.env.RELEASE_VERSION?.trim().replace(/^v/, "");
+
+if (releaseVersion) pkg.version = releaseVersion;
 
 if (fs.existsSync(DIST)) {
   for (const entry of fs.readdirSync(DIST)) {
@@ -27,5 +30,8 @@ fs.writeFileSync(path.join(DIST, "package.json"), JSON.stringify(pkg, null, 2), 
 
 const license = path.join(ROOT, "LICENSE");
 if (fs.existsSync(license)) fs.copyFileSync(license, path.join(DIST, "LICENSE"));
+
+const readme = path.join(ROOT, "README.md");
+if (fs.existsSync(readme)) fs.copyFileSync(readme, path.join(DIST, "README.md"));
 
 console.log(`dist/ packaged as ${pkg.name}@${pkg.version}`);

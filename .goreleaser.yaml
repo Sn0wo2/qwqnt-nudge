@@ -1,0 +1,36 @@
+version: 2
+project_name: qwqnt-nudge
+dist: .goreleaser-dist
+
+before:
+  hooks: []
+
+builds:
+  - skip: true
+
+archives:
+  - id: plugin
+    meta: true
+    formats: [zip]
+    files:
+      - src: dist/main/index.js
+        dst: main/index.js
+      - src: dist/preload/index.js
+        dst: preload/index.js
+      - src: dist/renderer/index.js
+        dst: renderer/index.js
+      - src: dist/package.json
+        dst: package.json
+      - src: dist/README.md
+        dst: README.md
+      - src: dist/LICENSE
+        dst: LICENSE
+    name_template: "{{ .ProjectName }}-v{{ .Version }}"
+
+checksum:
+  disable: true
+
+release:
+  github:
+    owner: Sn0wo2
+    name: qwqnt-nudge

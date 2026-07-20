@@ -1,0 +1,39 @@
+name: Build plugin
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.2.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run typecheck
+
+      - run: pnpm run build
+
+      - run: |
+          test -f dist/package.json
+          test -f dist/README.md
+          test -f dist/LICENSE
+          test -f dist/main/index.js
+          test -f dist/preload/index.js
+          test -f dist/renderer/index.js
+          test "$(node -p "require('./dist/package.json').version")" = "0.0.0"
