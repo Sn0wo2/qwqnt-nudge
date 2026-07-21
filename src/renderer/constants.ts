@@ -59,6 +59,28 @@ export const SETTINGS_ITEMS = [
     step: 1,
   },
   {
+    path: "listMode",
+    name: "列表模式",
+    meta: "黑名单-列表内跳过；白名单-仅回复列表内",
+    type: "select" as const,
+    options: [
+      { value: "blacklist", label: "黑名单" },
+      { value: "whitelist", label: "白名单" },
+    ],
+  },
+  {
+    path: "groupList",
+    name: "群聊白/黑名单",
+    meta: "群号，英文逗号分隔",
+    type: "text" as const,
+  },
+  {
+    path: "userList",
+    name: "用户白/黑名单",
+    meta: "QQ号，英文逗号分隔",
+    type: "text" as const,
+  },
+  {
     path: "doubleClickPoke.enabled",
     name: "双击头像戳一戳",
     meta: "替换默认行为（打开聊天）",

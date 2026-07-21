@@ -8,6 +8,9 @@ interface NudgeConfig {
     maxConsecutive: number;
   };
   doubleClickPoke: { enabled: boolean };
+  listMode: string;
+  groupList: string[];
+  userList: string[];
 }
 
 interface NudgeSendResult {

@@ -12,10 +12,15 @@ export async function renderSettings(): Promise<void> {
     root.className = `${PREFIX}settings`;
     root.innerHTML = `<div class="${PREFIX}section"><div class="${PREFIX}section-title">戳一戳</div>${SETTINGS_ITEMS.map(
       (item) => {
-        const ctrl =
-          item.type === "switch"
-            ? `<button class="${PREFIX}switch"></button>`
-            : `<div class="${PREFIX}num"><input type="number" min="${item.min}" max="${item.max}" step="${item.step}"></div>`;
+        let ctrl = "";
+        if (item.type === "switch")
+          ctrl = `<button class="${PREFIX}switch"></button>`;
+        else if (item.type === "number")
+          ctrl = `<div class="${PREFIX}num"><input type="number" min="${item.min}" max="${item.max}" step="${item.step}"></div>`;
+        else if (item.type === "select" && "options" in item)
+          ctrl = `<select class="${PREFIX}select">${item.options.map(o => `<option value="${o.value}">${o.label}</option>`).join("")}</select>`;
+        else if (item.type === "text")
+          ctrl = `<input type="text" class="${PREFIX}text" placeholder="${item.meta}">`;
         return `<div class="${PREFIX}item" data-path="${item.path}"><div class="${PREFIX}item-main"><div class="${PREFIX}item-name">${item.name}</div><div class="${PREFIX}item-meta">${item.meta}</div></div>${ctrl}</div>`;
       },
     ).join("")}</div>`;
@@ -29,8 +34,12 @@ export async function renderSettings(): Promise<void> {
           .reduce((o: any, k) => o?.[k], c);
         const sw = el.querySelector<HTMLElement>(`.${PREFIX}switch`);
         if (sw) sw.dataset.on = String(Boolean(v));
-        const inp = el.querySelector<HTMLInputElement>(`.${PREFIX}num input`);
-        if (inp && v !== undefined) inp.value = String(v);
+        const num = el.querySelector<HTMLInputElement>(`.${PREFIX}num input`);
+        if (num && v !== undefined) num.value = String(v);
+        const sel = el.querySelector<HTMLSelectElement>(`.${PREFIX}select`);
+        if (sel && v !== undefined) sel.value = String(v);
+        const txt = el.querySelector<HTMLInputElement>(`.${PREFIX}text`);
+        if (txt && v !== undefined) txt.value = Array.isArray(v) ? v.join(", ") : String(v);
       });
 
     apply(await api.getConfig());
@@ -48,11 +57,25 @@ export async function renderSettings(): Promise<void> {
       api.setConfig({ [item.dataset.path!]: v });
     });
     root.addEventListener("change", (ev) => {
-      const inp = ev.target as HTMLInputElement;
-      if (inp.tagName !== "INPUT") return;
-      const item = inp.closest("[data-path]") as HTMLElement | null;
+      const target = ev.target as HTMLElement;
+      const item = target.closest("[data-path]") as HTMLElement | null;
       if (!item) return;
-      api.setConfig({ [item.dataset.path!]: Number(inp.value) });
+      if (target.tagName === "SELECT") {
+        api.setConfig({ [item.dataset.path!]: (target as HTMLSelectElement).value });
+      } else if (
+        target.tagName === "INPUT" &&
+        (target as HTMLInputElement).type === "number"
+      ) {
+        api.setConfig({ [item.dataset.path!]: Number((target as HTMLInputElement).value) });
+      } else if (
+        target.tagName === "INPUT" &&
+        (target as HTMLInputElement).type === "text"
+      ) {
+        const val = (target as HTMLInputElement).value;
+        api.setConfig({
+          [item.dataset.path!]: val.split(/[,\s]+/).filter(Boolean),
+        });
+      }
     });
     api.onConfigChange(apply);
   } catch (e) {

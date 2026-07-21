@@ -12,6 +12,9 @@ interface AutoPokeBackConfig {
 interface Config {
   autoPokeBack: AutoPokeBackConfig;
   doubleClickPoke: { enabled: boolean };
+  listMode: string;
+  groupList: string[];
+  userList: string[];
 }
 const DEFAULT_CONFIG: Config = {
   autoPokeBack: {
@@ -21,6 +24,9 @@ const DEFAULT_CONFIG: Config = {
     maxConsecutive: 5,
   },
   doubleClickPoke: { enabled: true },
+  listMode: "blacklist",
+  groupList: [],
+  userList: [],
 };
 
 function setNested(target: Record<string, any>, key: string, value: any): void {
@@ -151,6 +157,9 @@ export default {
         ...DEFAULT_CONFIG.doubleClickPoke,
         ...stored.doubleClickPoke,
       },
+      listMode: stored.listMode ?? DEFAULT_CONFIG.listMode,
+      groupList: stored.groupList ?? DEFAULT_CONFIG.groupList,
+      userList: stored.userList ?? DEFAULT_CONFIG.userList,
     };
     PluginSettings.main.writeConfig(PLUGIN_ID, config);
 
@@ -183,6 +192,7 @@ export default {
     const lastNudgeTime = new Map<string, number>();
     let consecutiveCount = 0;
     let lastConsecutiveReset = 0;
+    let selfUin = "";
     let lastSentNudge: {
       peerUid: string;
       targetUin: string;
@@ -199,6 +209,8 @@ export default {
         if (!wcId) return;
 
         for (const msg of cmd.payload?.msgList ?? []) {
+          if (!selfUin && Number(msg.sendType) === 1 && msg.senderUin)
+            selfUin = String(msg.senderUin);
           const isGroup = msg.chatType === 2;
           if (msg.msgType !== 5 || msg.subMsgType !== 12) continue;
           if (isGroup ? !config.autoPokeBack.groupEnabled : msg.chatType !== 1)
@@ -207,7 +219,14 @@ export default {
           const poke = parseNudgePoke(msg);
           if (!poke?.uid || !poke.uin) continue;
           if (!isGroup && poke.uid !== msg.peerUid) continue;
-          if (isGroup && (!poke.targetUin || poke.uin === poke.targetUin))
+          if (isGroup && (!poke.targetUin || poke.uin === poke.targetUin || !selfUin || poke.targetUin !== selfUin))
+            continue;
+          // Blacklist/whitelist filtering
+          if (
+            isGroup ?
+              config.listMode === "blacklist" ? config.groupList.includes(msg.peerUid) : !config.groupList.includes(msg.peerUid) :
+              config.listMode === "blacklist" ? config.userList.includes(poke.uin) : !config.userList.includes(poke.uin)
+          )
             continue;
           if (
             isGroup &&
