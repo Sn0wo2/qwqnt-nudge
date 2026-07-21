@@ -26,7 +26,7 @@ The prerequisite plugin must be installed in the same QwQNT plugins directory. I
 
 ## Feedback
 
-Report issues at <https://github.com/Sn0wo2/qwqnt-nudge/issues>.
+Report issues at <https://github.com/qwqnt-community/qwqnt-nudge/issues>.
 
 ## License
 
