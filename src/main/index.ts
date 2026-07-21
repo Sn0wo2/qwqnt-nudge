@@ -1,76 +1,63 @@
 import { ipcMain, webContents } from "electron";
 import crypto from "crypto";
-import fs from "fs";
-import path from "path";
 
-const PLUGIN_NAME = "qwqnt-nudge";
-const DEFAULT_CONFIG = {
-  autoPokeBack: { enabled: true, cooldown: 3000, maxConsecutive: 5 },
+const PLUGIN_ID = "qwqnt-nudge";
+
+interface AutoPokeBackConfig {
+  enabled: boolean;
+  groupEnabled: boolean;
+  cooldown: number;
+  maxConsecutive: number;
+}
+interface Config {
+  autoPokeBack: AutoPokeBackConfig;
+  doubleClickPoke: { enabled: boolean };
+}
+const DEFAULT_CONFIG: Config = {
+  autoPokeBack: {
+    enabled: true,
+    groupEnabled: false,
+    cooldown: 3000,
+    maxConsecutive: 5,
+  },
   doubleClickPoke: { enabled: true },
 };
-let config: Record<string, any> = {};
-let configPath = "";
 
-function resolveConfigPath(): string {
-  if (configPath) return configPath;
-  const fp = (globalThis as any).qwqnt?.framework?.paths;
-  const dir = fp?.configs
-    ? path.join(fp.configs, PLUGIN_NAME)
-    : path.join(__dirname, "..");
-  fs.mkdirSync(dir, { recursive: true });
-  configPath = path.join(dir, "config.json");
-  return configPath;
-}
-
-function dispatchIpc(
-  wcId: number,
-  envelope: Record<string, any>,
-  cmd: Record<string, any>,
-): Promise<any> {
-  const wc = webContents.fromId(wcId);
-  if (!wc) return Promise.resolve({ error: "no webContents" });
-  const cb = crypto.randomUUID();
-  const mch = "RM_IPCFROM_MAIN" + wcId,
-    rch = "RM_IPCFROM_RENDERER" + wcId;
-  let r: (v: any) => void, rt: ReturnType<typeof setTimeout>;
-  const unsub = IpcInterceptor.interceptIpcSend((ch, ...a) => {
-    if (ch !== mch || a[0]?.callbackId !== cb)
-      return { action: "pass" as const };
-    clearTimeout(rt);
-    unsub();
-    r(a[1]);
-    return { action: "block" as const };
-  });
-  const ls = ipcMain.listeners(rch);
-  if (!ls.length) {
-    unsub();
-    return Promise.resolve({ error: "no listeners" });
+function setNested(target: Record<string, any>, key: string, value: any): void {
+  if (!key.includes(".")) {
+    if (value && typeof value === "object" && !Array.isArray(value))
+      target[key] = { ...target[key], ...value };
+    else target[key] = value;
+    return;
   }
-  const fe = { sender: wc as any, reply: (...a: any[]) => wc.send(rch, ...a) };
-  for (const fn of ls)
-    try {
-      fn(fe, { peerId: wcId, callbackId: cb, ...envelope } as any, cmd);
-    } catch {}
-  return Promise.race([
-    new Promise((r2) => {
-      r = r2;
-    }),
-    new Promise((r2) => {
-      rt = setTimeout(() => {
-        unsub();
-        r2({ error: "timeout" });
-      }, 3000);
-    }),
-  ]);
+  const parts = key.split(".");
+  let cur: Record<string, any> = target;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (typeof cur[parts[i]] !== "object" || cur[parts[i]] === null)
+      cur[parts[i]] = {};
+    cur = cur[parts[i]];
+  }
+  cur[parts[parts.length - 1]] = value;
 }
 
-const buildCmd = (n: string, p: any) => ({
-  cmdName: n,
+function migrateDotKeys<T extends Record<string, any>>(raw: T): T {
+  for (const key of Object.keys(raw)) {
+    if (!key.includes(".")) continue;
+    setNested(raw, key, raw[key]);
+    delete raw[key];
+  }
+  return raw;
+}
+
+const buildCmd = (name: string, payload: any) => ({
+  cmdName: name,
   cmdType: "invoke",
-  payload: p,
+  payload,
 });
 
-function parseNudgePoke(msg: any): { uid: string; uin: string } | null {
+function parseNudgePoke(
+  msg: any,
+): { uid: string; uin: string; targetUin: string } | null {
   for (const el of msg?.elements ?? []) {
     const tip = el?.grayTipElement?.jsonGrayTipElement;
     if (String(tip?.busiId ?? "") !== "1061") continue;
@@ -82,140 +69,177 @@ function parseNudgePoke(msg: any): { uid: string; uin: string } | null {
         )?.uid ?? "";
     } catch {}
     const tp = tip?.xmlToJsonParam?.templParam;
-    const uin = (tp instanceof Map ? tp.get("uin_str1") : tp?.uin_str1) ?? "";
-    return { uid, uin: String(uin) };
+    const get = (k: string) =>
+      String((tp instanceof Map ? tp.get(k) : tp?.[k]) ?? "");
+    return { uid, uin: get("uin_str1"), targetUin: get("uin_str2") };
   }
   return null;
 }
 
-async function sendNudge(
+function dispatchIpc(
   wcId: number,
-  ct: number,
-  puid: string,
-  tuin: string,
-  guin?: string,
+  envelope: Record<string, any>,
+  cmd: Record<string, any>,
 ): Promise<any> {
-  const uid = ct === 2 ? guin || puid : puid;
-  const chatUin = ct === 2 ? guin || puid : tuin;
-  return await dispatchIpc(
+  const wc = webContents.fromId(wcId);
+  if (!wc) return Promise.resolve({ error: "no webContents" });
+  const callbackId = crypto.randomUUID();
+  const mainChannel = "RM_IPCFROM_MAIN" + wcId;
+  const rendererChannel = "RM_IPCFROM_RENDERER" + wcId;
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (v: any) => {
+      if (settled) return;
+      settled = true;
+      unsub();
+      clearTimeout(timer);
+      resolve(v);
+    };
+    const unsub = IpcInterceptor.interceptIpcSend((ch, ...a) => {
+      if (ch !== mainChannel || a[0]?.callbackId !== callbackId)
+        return { action: "pass" as const };
+      finish(a[1]);
+      return { action: "block" as const };
+    });
+    const timer = setTimeout(() => finish({ error: "timeout" }), 3000);
+    const listeners = ipcMain.listeners(rendererChannel);
+    if (!listeners.length) {
+      finish({ error: "no listeners" });
+      return;
+    }
+    const fakeEvent = {
+      sender: wc as any,
+      reply: (...a: any[]) => wc.send(rendererChannel, ...a),
+    };
+    for (const fn of listeners)
+      try {
+        fn(fakeEvent, { peerId: wcId, callbackId, ...envelope } as any, cmd);
+      } catch (err) {
+        console.error("[nudge] listener error:", err);
+      }
+  });
+}
+
+function sendNudge(
+  wcId: number,
+  chatType: number,
+  peerUid: string,
+  targetUin: string,
+  chatUin: string,
+): Promise<any> {
+  return dispatchIpc(
     wcId,
     { type: "request", eventName: "ntApi" },
     buildCmd("nodeIKernelMsgService/sendNudge", [
-      {
-        peer: { chatType: ct, peerUid: uid, guildId: "" },
-        targetUin: tuin,
-        chatUin,
-      },
+      { peer: { chatType, peerUid, guildId: "" }, targetUin, chatUin },
       null,
     ]),
   );
 }
 
-const lastNudgeTime = new Map<string, number>();
-let consecutiveCount = 0,
-  lastConsecutiveReset = 0;
-
 export default {
   onLoad() {
-    try {
-      const p = resolveConfigPath();
-      if (!fs.existsSync(p)) {
-        config = { ...DEFAULT_CONFIG };
-        fs.writeFileSync(p, JSON.stringify(config, null, 2), "utf8");
-      } else {
-        const raw: Record<string, any> = JSON.parse(fs.readFileSync(p, "utf8"));
-        for (const k of Object.keys(raw)) {
-          if (!k.includes(".")) continue;
-          const parts = k.split(".");
-          let cur = raw;
-          for (let i = 0; i < parts.length - 1; i++) {
-            if (!cur[parts[i]] || typeof cur[parts[i]] !== "object")
-              cur[parts[i]] = {};
-            cur = cur[parts[i]];
-          }
-          cur[parts[parts.length - 1]] = raw[k];
-          delete raw[k];
-        }
-        config = { ...DEFAULT_CONFIG, ...raw };
-        fs.writeFileSync(p, JSON.stringify(config, null, 2), "utf8");
-      }
-    } catch {}
+    const stored = migrateDotKeys(
+      PluginSettings.main.readConfig<Config & Record<string, any>>(
+        PLUGIN_ID,
+        DEFAULT_CONFIG,
+      ),
+    );
+    let config: Config = {
+      autoPokeBack: { ...DEFAULT_CONFIG.autoPokeBack, ...stored.autoPokeBack },
+      doubleClickPoke: {
+        ...DEFAULT_CONFIG.doubleClickPoke,
+        ...stored.doubleClickPoke,
+      },
+    };
+    PluginSettings.main.writeConfig(PLUGIN_ID, config);
+
+    const broadcast = () =>
+      webContents.getAllWebContents().forEach((w) => {
+        if (!w.isDestroyed()) w.send("nudge:config-changed", { ...config });
+      });
 
     ipcMain.handle("nudge:get-config", () => ({ ...config }));
-    ipcMain.on("nudge:set-config", (_, patch) => {
-      for (const k of Object.keys(patch)) {
-        if (k.includes(".")) {
-          const parts = k.split(".");
-          let cur = config;
-          for (let i = 0; i < parts.length - 1; i++) {
-            if (!cur[parts[i]] || typeof cur[parts[i]] !== "object")
-              cur[parts[i]] = {};
-            cur = cur[parts[i]];
-          }
-          cur[parts[parts.length - 1]] = patch[k];
-        } else if (typeof patch[k] === "object" && !Array.isArray(patch[k])) {
-          config[k] = { ...config[k], ...patch[k] };
-        } else {
-          config[k] = patch[k];
-        }
-      }
-      try {
-        fs.writeFileSync(
-          resolveConfigPath(),
-          JSON.stringify(config, null, 2),
-          "utf8",
-        );
-      } catch {}
-      for (const w of webContents.getAllWebContents())
-        if (!w.isDestroyed()) w.send("nudge:config-changed", { ...config });
+    ipcMain.on("nudge:set-config", (_, patch: Record<string, any>) => {
+      for (const [k, v] of Object.entries(patch))
+        setNested(config as any, k, v);
+      PluginSettings.main.writeConfig(PLUGIN_ID, config);
+      broadcast();
     });
     ipcMain.handle(
       "nudge:send",
-      async (e, { chatType, peerUid, targetUin, groupUin }) => {
+      async (e, { chatType, peerUid, targetUin }) => {
         const r = await sendNudge(
           (e.sender as any).id,
           chatType,
           peerUid,
           targetUin,
-          groupUin,
+          chatType === 2 ? peerUid : targetUin,
         );
         return r.cmdData ?? r.error;
       },
     );
 
-    const iv = setInterval(() => {
+    const lastNudgeTime = new Map<string, number>();
+    let consecutiveCount = 0;
+    let lastConsecutiveReset = 0;
+    let lastSentNudge: {
+      peerUid: string;
+      targetUin: string;
+      time: number;
+    } | null = null;
+
+    const ready = setInterval(() => {
       if (!IpcInterceptor) return;
-      clearInterval(iv);
+      clearInterval(ready);
       IpcInterceptor.onIpcSend((ch, _e, cmd) => {
         if (cmd?.cmdName !== "nodeIKernelMsgListener/onRecvMsg") return;
         if (!config.autoPokeBack?.enabled) return;
-        const msgs = cmd.payload?.msgList ?? [];
-        for (const msg of msgs) {
-          if (msg.chatType !== 1 || msg.msgType !== 5 || msg.subMsgType !== 12)
+        const wcId = Number(ch.replace("RM_IPCFROM_MAIN", ""));
+        if (!wcId) return;
+
+        for (const msg of cmd.payload?.msgList ?? []) {
+          const isGroup = msg.chatType === 2;
+          if (msg.msgType !== 5 || msg.subMsgType !== 12) continue;
+          if (isGroup ? !config.autoPokeBack.groupEnabled : msg.chatType !== 1)
             continue;
+
           const poke = parseNudgePoke(msg);
-          if (!poke?.uid || poke.uid !== msg.peerUid) continue;
-          const cool = config.autoPokeBack.cooldown ?? 3000;
-          if (Date.now() - (lastNudgeTime.get(poke.uid) ?? 0) < cool) continue;
-          lastNudgeTime.set(poke.uid, Date.now());
-          if (Date.now() - lastConsecutiveReset > cool * 2)
-            consecutiveCount = 0;
-          if (consecutiveCount >= (config.autoPokeBack.maxConsecutive ?? 5))
+          if (!poke?.uid || !poke.uin) continue;
+          if (!isGroup && poke.uid !== msg.peerUid) continue;
+          if (isGroup && (!poke.targetUin || poke.uin === poke.targetUin))
             continue;
+          if (
+            isGroup &&
+            lastSentNudge &&
+            Date.now() - lastSentNudge.time < 5000 &&
+            msg.peerUid === lastSentNudge.peerUid &&
+            poke.targetUin === lastSentNudge.targetUin
+          )
+            continue;
+
+          const { cooldown = 3000, maxConsecutive = 5 } = config.autoPokeBack;
+          if (Date.now() - (lastNudgeTime.get(poke.uid) ?? 0) < cooldown)
+            continue;
+          if (Date.now() - lastConsecutiveReset > cooldown * 2)
+            consecutiveCount = 0;
+          if (consecutiveCount >= maxConsecutive) continue;
           consecutiveCount++;
           lastConsecutiveReset = Date.now();
-          if (!poke.uin) continue;
-          dispatchIpc(
-            Number(ch.replace("RM_IPCFROM_MAIN", "")),
-            { type: "request", eventName: "ntApi" },
-            buildCmd("nodeIKernelMsgService/sendNudge", [
-              {
-                peer: { chatType: 1, peerUid: msg.peerUid, guildId: "" },
-                targetUin: poke.uin,
-                chatUin: poke.uin,
-              },
-              null,
-            ]),
+          lastNudgeTime.set(poke.uid, Date.now());
+
+          if (isGroup)
+            lastSentNudge = {
+              peerUid: msg.peerUid,
+              targetUin: poke.uin,
+              time: Date.now(),
+            };
+          void sendNudge(
+            wcId,
+            msg.chatType,
+            msg.peerUid,
+            poke.uin,
+            isGroup ? msg.peerUid : poke.uin,
           );
         }
       });

@@ -1,21 +1,33 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld("nudgeDebug", {
-  getConfig: (): Promise<any> => ipcRenderer.invoke("nudge:get-config"),
-  setConfig: (c: any): void => ipcRenderer.send("nudge:set-config", c),
-  onConfigChange: (cb: (c: any) => void): void => {
+interface NudgeConfig {
+  autoPokeBack: {
+    enabled: boolean;
+    groupEnabled: boolean;
+    cooldown: number;
+    maxConsecutive: number;
+  };
+  doubleClickPoke: { enabled: boolean };
+}
+
+interface NudgeSendResult {
+  result?: number;
+  [k: string]: any;
+}
+
+const api = {
+  getConfig: (): Promise<NudgeConfig> => ipcRenderer.invoke("nudge:get-config"),
+  setConfig: (patch: Record<string, any>): void =>
+    ipcRenderer.send("nudge:set-config", patch),
+  onConfigChange: (cb: (c: NudgeConfig) => void): void => {
     ipcRenderer.on("nudge:config-changed", (_e, c) => cb(c));
   },
   sendNudge: (
     chatType: number,
     peerUid: string,
     targetUin: string,
-    groupUin?: string,
-  ): Promise<any> =>
-    ipcRenderer.invoke("nudge:send", {
-      chatType,
-      peerUid,
-      targetUin,
-      groupUin,
-    }),
-});
+  ): Promise<NudgeSendResult> =>
+    ipcRenderer.invoke("nudge:send", { chatType, peerUid, targetUin }),
+};
+
+contextBridge.exposeInMainWorld("nudgeDebug", api);
