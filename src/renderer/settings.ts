@@ -31,27 +31,27 @@ export async function renderSettings(): Promise<void> {
     });
 
     view.innerHTML = `
-      <setting-section data-title="戳一戳">
+      <setting-section data-title="「戳一戳」">
         <setting-panel>
           <setting-list data-direction="column">
             <setting-item data-direction="row">
               <div>
                 <setting-text>自动回戳</setting-text>
-                <setting-text data-type="secondary">收到戳一戳时自动回复</setting-text>
+                <setting-text data-type="secondary">收到「戳一戳」时自动戳回去</setting-text>
               </div>
               <setting-switch data-path="autoPokeBack.enabled"></setting-switch>
             </setting-item>
             <setting-item data-direction="row">
               <div>
                 <setting-text>群聊自动回戳</setting-text>
-                <setting-text data-type="secondary">群聊中收到戳一戳时自动回复</setting-text>
+                <setting-text data-type="secondary">群聊中收到「戳一戳」时自动戳回去</setting-text>
               </div>
               <setting-switch data-path="autoPokeBack.groupEnabled"></setting-switch>
             </setting-item>
             <setting-item data-direction="row">
               <div>
                 <setting-text>冷却时间</setting-text>
-                <setting-text data-type="secondary">最小回复间隔（毫秒）</setting-text>
+                <setting-text data-type="secondary">最小回复间隔（ms）</setting-text>
               </div>
               <input class="nudge-input" type="number" data-path="autoPokeBack.cooldown" min="0" max="60000" step="1000">
             </setting-item>
@@ -88,8 +88,8 @@ export async function renderSettings(): Promise<void> {
             </setting-item>
             <setting-item data-direction="row">
               <div>
-                <setting-text>双击头像戳一戳</setting-text>
-                <setting-text data-type="secondary">替换默认行为（打开聊天）</setting-text>
+                <setting-text>双击头像「戳一戳」</setting-text>
+                <setting-text data-type="secondary">替换默认行为</setting-text>
               </div>
               <setting-switch data-path="doubleClickPoke.enabled"></setting-switch>
             </setting-item>
