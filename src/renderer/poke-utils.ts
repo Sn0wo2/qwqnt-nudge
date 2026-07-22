@@ -1,4 +1,4 @@
-import type { NudgeAPI, PokePayload, ChatContext } from "./types";
+import type { NudgeAPI, PokePayload, ChatContext, AioData } from "./types";
 import { PREFIX, AVATAR_SELECTORS, TEMPORARY_CHAT_TYPES } from "./constants";
 import { findMsgRecord, probeVueValue } from "./vue-utils";
 import { log } from "./log";
@@ -16,12 +16,13 @@ export function getChatContext(avatar: Element): ChatContext {
   const aioEl =
     document.querySelector(".aio.vue-component") ??
     document.querySelector(".aio");
-  const aioData = aioEl
+  const aioData = (aioEl
     ? probeVueValue(aioEl, [
         "proxy.commonAioStore.curAioData",
         "ctx.commonAioStore.curAioData",
       ])
-    : null;
+    : null) as AioData | null;
+
   const h = aioData?.header ?? {};
   const chatTypes = [
     aioData?.chatType,
@@ -101,7 +102,7 @@ export function sendPoke(
     .then((r) => {
       if (r?.result === 0) {
         avatar.classList.remove(`${PREFIX}shake`);
-        void (avatar as any).offsetWidth;
+        void (avatar as HTMLElement).offsetWidth;
         avatar.classList.add(`${PREFIX}shake`);
       }
     })
@@ -111,5 +112,5 @@ export function sendPoke(
 export function stopImmediate(ev: Event): void {
   ev.preventDefault();
   ev.stopPropagation();
-  (ev as any).stopImmediatePropagation?.();
+  ev.stopImmediatePropagation();
 }

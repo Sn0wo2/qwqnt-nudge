@@ -1,18 +1,35 @@
-export interface PokePayload {
-  chatType: number;
-  peerUid: string;
-  targetUin: string;
+export interface NudgeConfig {
+  autoPokeBack: {
+    enabled: boolean;
+    groupEnabled: boolean;
+    cooldown: number;
+    maxConsecutive: number;
+  };
+  doubleClickPoke: { enabled: boolean };
+  listMode: "blacklist" | "whitelist";
+  groupList: string[];
+  userList: string[];
+}
+
+export interface NudgeSendResult {
+  result?: number;
 }
 
 export interface NudgeAPI {
-  getConfig: () => Promise<any>;
-  setConfig: (patch: Record<string, any>) => void;
-  onConfigChange: (cb: (c: any) => void) => void;
+  getConfig: () => Promise<NudgeConfig>;
+  setConfig: (patch: Record<string, unknown>) => void;
+  onConfigChange: (cb: (c: NudgeConfig) => void) => void;
   sendNudge: (
     chatType: number,
     peerUid: string,
     targetUin: string,
-  ) => Promise<{ result?: number; [k: string]: any }>;
+  ) => Promise<NudgeSendResult>;
+}
+
+export interface PokePayload {
+  chatType: number;
+  peerUid: string;
+  targetUin: string;
 }
 
 export interface PendingClick {
@@ -23,9 +40,41 @@ export interface PendingClick {
   payload: PokePayload;
 }
 
+export interface MsgRecord {
+  msgId?: string;
+  msgSeq?: string;
+  elements?: unknown[];
+  chatType?: number;
+  peerUid?: string;
+  peerUin?: string | number;
+  senderUin?: string | number;
+  peer?: { peerUid?: string; peerUin?: string | number; chatType?: number };
+  sender?: { uin?: string | number };
+  [k: string]: unknown;
+}
+
+export interface AioData {
+  chatType?: number;
+  type?: number;
+  aioType?: number;
+  peerUid?: string;
+  peerUin?: string | number;
+  peer?: { chatType?: number; peerUid?: string; peerUin?: string | number };
+  contact?: { chatType?: number };
+  header?: {
+    chatType?: number;
+    peerUid?: string;
+    peerUin?: string | number;
+    uin?: string | number;
+    uid?: string;
+    peer?: { chatType?: number; peerUid?: string; peerUin?: string | number };
+  };
+  [k: string]: unknown;
+}
+
 export interface ChatContext {
-  record: any;
-  aioData: any;
+  record: MsgRecord | null;
+  aioData: AioData | null;
   chatType: number;
   isTemporary: boolean;
 }

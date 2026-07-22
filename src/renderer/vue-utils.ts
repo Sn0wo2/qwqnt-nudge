@@ -1,36 +1,49 @@
 import { RECORD_SEARCH_KEYS } from "./constants";
+import type { MsgRecord } from "./types";
 
-export function getVueInstances(el: Element): any[] {
-  const out: any[] = [];
-  const seen = new Set<any>();
-  const arr = (el as any).__VUE__ ?? [];
+interface VueInstance {
+  __VUE__?: unknown[] | unknown;
+  __vueParentComponent?: unknown;
+  [k: string]: unknown;
+}
+
+
+export function getVueInstances(el: Element): VueInstance[] {
+  const out: VueInstance[] = [];
+  const seen = new Set<VueInstance>();
+  const vueEl = el as unknown as VueInstance;
+  const arr = vueEl.__VUE__ ?? [];
   for (const i of Array.isArray(arr) ? arr : [arr])
-    if (i && !seen.has(i)) {
-      seen.add(i);
-      out.push(i);
+    if (i && !seen.has(i as VueInstance)) {
+      seen.add(i as VueInstance);
+      out.push(i as VueInstance);
     }
-  const pc = (el as any).__vueParentComponent;
-  if (pc && !seen.has(pc)) out.push(pc);
+  const pc = vueEl.__vueParentComponent;
+  if (pc && !seen.has(pc as VueInstance)) out.push(pc as VueInstance);
   return out;
 }
 
-export function probeVueValue(el: Element, paths: string[]): any {
+export function probeVueValue(el: Element, paths: string[]): unknown {
   for (const inst of getVueInstances(el))
     for (const p of paths) {
       try {
-        const v = p.split(".").reduce((o: any, k: string) => o?.[k], inst);
+        const v = p
+          .split(".")
+          .reduce((o: unknown, k: string) => (o as Record<string, unknown>)?.[k], inst);
         if (v != null) return v;
       } catch {}
     }
+  return undefined;
 }
 
-export function isMsgRecord(v: unknown): boolean {
+export function isMsgRecord(v: unknown): v is MsgRecord {
+  const r = v as Record<string, unknown>;
   return Boolean(
     v &&
-    typeof v === "object" &&
-    typeof (v as any).msgId === "string" &&
-    typeof (v as any).msgSeq === "string" &&
-    Array.isArray((v as any).elements),
+      typeof v === "object" &&
+      typeof r.msgId === "string" &&
+      typeof r.msgSeq === "string" &&
+      Array.isArray(r.elements),
   );
 }
 
@@ -38,7 +51,7 @@ export function deepFindRecord(
   val: unknown,
   depth = 0,
   seen = new WeakSet<object>(),
-): any {
+): MsgRecord | null {
   if (
     !val ||
     depth > 4 ||
@@ -51,16 +64,17 @@ export function deepFindRecord(
     return null;
   seen.add(val);
   if (isMsgRecord(val)) return val;
+  const r = val as Record<string, unknown>;
   for (const k of RECORD_SEARCH_KEYS) {
     try {
-      const found = deepFindRecord((val as any)[k], depth + 1, seen);
+      const found = deepFindRecord(r[k], depth + 1, seen);
       if (found) return found;
     } catch {}
   }
   return null;
 }
 
-export function findMsgRecord(el: Element): any {
+export function findMsgRecord(el: Element): MsgRecord | null {
   const container = el.closest(
     ".message.vue-component, .ml-item, .message, [id]",
   );

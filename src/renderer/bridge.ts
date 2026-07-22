@@ -5,7 +5,7 @@ export function waitForBridge(): Promise<NudgeAPI> {
   return new Promise((resolve, reject) => {
     let tries = 0;
     const poll = () => {
-      const b = (window as any).nudgeDebug as NudgeAPI | undefined;
+      const b = (window as unknown as { nudgeDebug?: NudgeAPI }).nudgeDebug;
       if (b) return resolve(b);
       if (++tries > BRIDGE_POLL_MAX)
         return reject(new Error("nudgeDebug bridge not available"));

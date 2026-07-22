@@ -8,19 +8,19 @@ interface NudgeConfig {
     maxConsecutive: number;
   };
   doubleClickPoke: { enabled: boolean };
-  listMode: string;
+  listMode: "blacklist" | "whitelist";
   groupList: string[];
   userList: string[];
 }
 
 interface NudgeSendResult {
   result?: number;
-  [k: string]: any;
 }
+
 
 const api = {
   getConfig: (): Promise<NudgeConfig> => ipcRenderer.invoke("nudge:get-config"),
-  setConfig: (patch: Record<string, any>): void =>
+  setConfig: (patch: Record<string, unknown>): void =>
     ipcRenderer.send("nudge:set-config", patch),
   onConfigChange: (cb: (c: NudgeConfig) => void): void => {
     ipcRenderer.on("nudge:config-changed", (_e, c) => cb(c));
