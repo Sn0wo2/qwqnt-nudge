@@ -1,5 +1,26 @@
-import { PREFIX, SETTINGS_ITEMS } from "./constants";
 import { waitForBridge } from "./bridge";
+
+interface SettingsConfig {
+  autoPokeBack?: {
+    enabled?: boolean;
+    groupEnabled?: boolean;
+    cooldown?: number;
+    maxConsecutive?: number;
+  };
+  doubleClickPoke?: { enabled?: boolean };
+  listMode?: string;
+  groupList?: string[];
+  userList?: string[];
+}
+
+type SelectedEvent = CustomEvent<{ value: string }>;
+
+function readConfigValue(config: SettingsConfig, path: string): unknown {
+  return path.split(".").reduce<unknown>((value, key) => {
+    if (!value || typeof value !== "object") return undefined;
+    return (value as Record<string, unknown>)[key];
+  }, config);
+}
 
 export async function renderSettings(): Promise<void> {
   try {
@@ -8,75 +29,135 @@ export async function renderSettings(): Promise<void> {
       name: "qwqnt-nudge",
       qwqnt: { name: "Nudge" },
     });
-    const root = document.createElement("div");
-    root.className = `${PREFIX}settings`;
-    root.innerHTML = `<div class="${PREFIX}section"><div class="${PREFIX}section-title">戳一戳</div>${SETTINGS_ITEMS.map(
-      (item) => {
-        let ctrl = "";
-        if (item.type === "switch")
-          ctrl = `<button class="${PREFIX}switch"></button>`;
-        else if (item.type === "number")
-          ctrl = `<div class="${PREFIX}num"><input type="number" min="${item.min}" max="${item.max}" step="${item.step}"></div>`;
-        else if (item.type === "select" && "options" in item)
-          ctrl = `<select class="${PREFIX}select">${item.options.map(o => `<option value="${o.value}">${o.label}</option>`).join("")}</select>`;
-        else if (item.type === "text")
-          ctrl = `<input type="text" class="${PREFIX}text" placeholder="${item.meta}">`;
-        return `<div class="${PREFIX}item" data-path="${item.path}"><div class="${PREFIX}item-main"><div class="${PREFIX}item-name">${item.name}</div><div class="${PREFIX}item-meta">${item.meta}</div></div>${ctrl}</div>`;
-      },
-    ).join("")}</div>`;
-    view.appendChild(root);
 
-    const apply = (c: any) =>
-      root.querySelectorAll<HTMLElement>("[data-path]").forEach((el) => {
-        const v = el
-          .getAttribute("data-path")!
-          .split(".")
-          .reduce((o: any, k) => o?.[k], c);
-        const sw = el.querySelector<HTMLElement>(`.${PREFIX}switch`);
-        if (sw) sw.dataset.on = String(Boolean(v));
-        const num = el.querySelector<HTMLInputElement>(`.${PREFIX}num input`);
-        if (num && v !== undefined) num.value = String(v);
-        const sel = el.querySelector<HTMLSelectElement>(`.${PREFIX}select`);
-        if (sel && v !== undefined) sel.value = String(v);
-        const txt = el.querySelector<HTMLInputElement>(`.${PREFIX}text`);
-        if (txt && v !== undefined) txt.value = Array.isArray(v) ? v.join(", ") : String(v);
-      });
+    view.innerHTML = `
+      <setting-section data-title="戳一戳">
+        <setting-panel>
+          <setting-list data-direction="column">
+            <setting-item data-direction="row">
+              <div>
+                <setting-text>自动回戳</setting-text>
+                <setting-text data-type="secondary">收到戳一戳时自动回复</setting-text>
+              </div>
+              <setting-switch data-path="autoPokeBack.enabled"></setting-switch>
+            </setting-item>
+            <setting-item data-direction="row">
+              <div>
+                <setting-text>群聊自动回戳</setting-text>
+                <setting-text data-type="secondary">群聊中收到戳一戳时自动回复</setting-text>
+              </div>
+              <setting-switch data-path="autoPokeBack.groupEnabled"></setting-switch>
+            </setting-item>
+            <setting-item data-direction="row">
+              <div>
+                <setting-text>冷却时间</setting-text>
+                <setting-text data-type="secondary">最小回复间隔（毫秒）</setting-text>
+              </div>
+              <input class="nudge-input" type="number" data-path="autoPokeBack.cooldown" min="0" max="60000" step="1000">
+            </setting-item>
+            <setting-item data-direction="row">
+              <div>
+                <setting-text>最大连续次数</setting-text>
+                <setting-text data-type="secondary">防止无限互戳</setting-text>
+              </div>
+              <input class="nudge-input" type="number" data-path="autoPokeBack.maxConsecutive" min="1" max="50" step="1">
+            </setting-item>
+            <setting-item data-direction="row">
+              <div>
+                <setting-text>列表模式</setting-text>
+                <setting-text data-type="secondary">黑名单跳过列表内对象，白名单仅回复列表内对象</setting-text>
+              </div>
+              <setting-select data-path="listMode">
+                <setting-option data-value="blacklist" is-selected>黑名单</setting-option>
+                <setting-option data-value="whitelist">白名单</setting-option>
+              </setting-select>
+            </setting-item>
+            <setting-item data-direction="row">
+              <div>
+                <setting-text>群聊白/黑名单</setting-text>
+                <setting-text data-type="secondary">群号，英文逗号分隔</setting-text>
+              </div>
+              <input class="nudge-input nudge-list-input" type="text" data-path="groupList" data-list placeholder="群号">
+            </setting-item>
+            <setting-item data-direction="row">
+              <div>
+                <setting-text>用户白/黑名单</setting-text>
+                <setting-text data-type="secondary">QQ号，英文逗号分隔</setting-text>
+              </div>
+              <input class="nudge-input nudge-list-input" type="text" data-path="userList" data-list placeholder="QQ号">
+            </setting-item>
+            <setting-item data-direction="row">
+              <div>
+                <setting-text>双击头像戳一戳</setting-text>
+                <setting-text data-type="secondary">替换默认行为（打开聊天）</setting-text>
+              </div>
+              <setting-switch data-path="doubleClickPoke.enabled"></setting-switch>
+            </setting-item>
+          </setting-list>
+        </setting-panel>
+      </setting-section>
+    `;
+
+    view.addEventListener("click", (event) => {
+      if (!(event.target instanceof Element)) return;
+      const control = event.target.closest("setting-switch");
+      const path = control?.getAttribute("data-path");
+      if (!control || !path) return;
+      const active = !control.hasAttribute("is-active");
+      control.toggleAttribute("is-active", active);
+      api.setConfig({ [path]: active });
+    });
+
+    view.addEventListener("change", (event) => {
+      if (!(event.target instanceof HTMLInputElement)) return;
+      const path = event.target.dataset.path;
+      if (!path) return;
+      const value = event.target.hasAttribute("data-list")
+        ? event.target.value.split(/[,\s]+/).filter(Boolean)
+        : Number(event.target.value);
+      api.setConfig({ [path]: value });
+    });
+
+    const select = view.querySelector<HTMLElement>(
+      'setting-select[data-path="listMode"]',
+    );
+    let applyingListMode = false;
+    select?.addEventListener("selected", (event) => {
+      if (applyingListMode) return;
+      const value = (event as SelectedEvent).detail.value;
+      api.setConfig({ [select.dataset.path!]: value });
+    });
+
+    const apply = (config: SettingsConfig) => {
+      for (const control of view.querySelectorAll<HTMLElement>("[data-path]")) {
+        const path = control.dataset.path;
+        if (!path) continue;
+        const value = readConfigValue(config, path);
+        if (control.matches("setting-switch")) {
+          control.toggleAttribute("is-active", value === true);
+          continue;
+        }
+        if (control === select) {
+          const selectedValue =
+            value === "whitelist" ? "whitelist" : "blacklist";
+          const option = [
+            ...control.querySelectorAll<HTMLElement>("setting-option"),
+          ].find((item) => item.getAttribute("data-value") === selectedValue);
+          if (option && !option.hasAttribute("is-selected")) {
+            applyingListMode = true;
+            option.click();
+            applyingListMode = false;
+          }
+          continue;
+        }
+        if (control instanceof HTMLInputElement && value !== undefined)
+          control.value = Array.isArray(value)
+            ? value.join(", ")
+            : String(value);
+      }
+    };
 
     apply(await api.getConfig());
-    root.addEventListener("click", (ev) => {
-      const item = (ev.target as HTMLElement).closest(
-        "[data-path]",
-      ) as HTMLElement | null;
-      if (!item) return;
-      const sw = (ev.target as HTMLElement).closest(
-        `.${PREFIX}switch`,
-      ) as HTMLElement | null;
-      if (!sw) return;
-      const v = sw.dataset.on !== "true";
-      sw.dataset.on = String(v);
-      api.setConfig({ [item.dataset.path!]: v });
-    });
-    root.addEventListener("change", (ev) => {
-      const target = ev.target as HTMLElement;
-      const item = target.closest("[data-path]") as HTMLElement | null;
-      if (!item) return;
-      if (target.tagName === "SELECT") {
-        api.setConfig({ [item.dataset.path!]: (target as HTMLSelectElement).value });
-      } else if (
-        target.tagName === "INPUT" &&
-        (target as HTMLInputElement).type === "number"
-      ) {
-        api.setConfig({ [item.dataset.path!]: Number((target as HTMLInputElement).value) });
-      } else if (
-        target.tagName === "INPUT" &&
-        (target as HTMLInputElement).type === "text"
-      ) {
-        const val = (target as HTMLInputElement).value;
-        api.setConfig({
-          [item.dataset.path!]: val.split(/[,\s]+/).filter(Boolean),
-        });
-      }
-    });
     api.onConfigChange(apply);
   } catch (e) {
     console.error("[Nudge] settings error", e);
