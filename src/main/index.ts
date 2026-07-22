@@ -3,6 +3,10 @@ import crypto from "crypto";
 
 const PLUGIN_ID = "qwqnt-nudge";
 
+const log = globalThis.Logs
+  ? new globalThis.Logs(PLUGIN_ID)
+  : (...args: unknown[]) => console.log(`[${PLUGIN_ID}]`, ...args);
+
 interface AutoPokeBackConfig {
   enabled: boolean;
   groupEnabled: boolean;
@@ -121,7 +125,7 @@ function dispatchIpc(
       try {
         fn(fakeEvent, { peerId: wcId, callbackId, ...envelope } as any, cmd);
       } catch (err) {
-        console.error("[nudge] listener error:", err);
+        log("listener error:", err);
       }
   });
 }

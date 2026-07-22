@@ -1,5 +1,5 @@
 import { waitForBridge } from "./bridge";
-
+import { log } from "./log";
 interface SettingsConfig {
   autoPokeBack?: {
     enabled?: boolean;
@@ -160,6 +160,6 @@ export async function renderSettings(): Promise<void> {
     apply(await api.getConfig());
     api.onConfigChange(apply);
   } catch (e) {
-    console.error("[Nudge] settings error", e);
+    log("settings error", e);
   }
 }

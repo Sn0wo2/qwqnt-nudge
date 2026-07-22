@@ -1,7 +1,7 @@
 import type { NudgeAPI, PokePayload, ChatContext } from "./types";
 import { PREFIX, AVATAR_SELECTORS, TEMPORARY_CHAT_TYPES } from "./constants";
 import { findMsgRecord, probeVueValue } from "./vue-utils";
-
+import { log } from "./log";
 export function getAvatarFromEvent(ev: Event): Element | null {
   for (const el of ev.composedPath?.() ?? [ev.target]) {
     if (!(el instanceof Element)) continue;
@@ -105,7 +105,7 @@ export function sendPoke(
         avatar.classList.add(`${PREFIX}shake`);
       }
     })
-    .catch((e: any) => console.error("[Nudge] sendPoke failed", e));
+    .catch((e: unknown) => log("sendPoke failed", e));
 }
 
 export function stopImmediate(ev: Event): void {

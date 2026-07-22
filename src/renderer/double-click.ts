@@ -7,7 +7,7 @@ import {
 } from "./constants";
 import { waitForBridge } from "./bridge";
 import { resolvePokeTarget, sendPoke, stopImmediate } from "./poke-utils";
-
+import { log } from "./log";
 export async function initDoubleClickPoke(): Promise<void> {
   let enabled = false;
   let api: NudgeAPI;
@@ -21,7 +21,7 @@ export async function initDoubleClickPoke(): Promise<void> {
       enabled = c?.doubleClickPoke?.enabled === true;
     });
   } catch (e) {
-    console.error("[Nudge] double-click init failed", e);
+    log("double-click init failed", e);
     return;
   }
 

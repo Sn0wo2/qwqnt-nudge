@@ -31,6 +31,7 @@
     },
     "dependencies": {
       "qwqnt-hako": "^1.0.0",
+      "qwqnt-ipc-logger?": "^1.3.1",
       "qwqnt-ipc-interceptor": "^1.2.0"
     }
   }
