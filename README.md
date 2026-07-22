@@ -4,7 +4,8 @@ A plugin that provides automatic poke-back and double-click avatar pokes for QwQ
 
 ## Features
 
-- Automatically replies to incoming private & group chat pokes.
+- Automatically replies to incoming private & group chat pokes (only when **you** are the poke target).
+- Group/private blacklist & whitelist with mode switch.
 - Configurable reply cooldown and maximum consecutive replies.
 - Double-click a message avatar to send a poke in private and group chats.
 
@@ -14,6 +15,7 @@ A plugin that provides automatic poke-back and double-click avatar pokes for QwQ
 - QwQNT framework
 - [`qwqnt-ipc-interceptor`](https://github.com/qwqnt-community/qwqnt-ipc-interceptor) >= `1.2.0`
 - [`qwqnt-hako`](https://github.com/qwqnt-community/qwqnt-hako) >= `1.0.0`
+- [`qwqnt-ipc-logger`](https://github.com/qwqnt-community/qwqnt-ipc-logger) >= `1.3.1` (optional, enables structured logging)
 
 The prerequisite plugin must be installed in the same QwQNT plugins directory. It is declared in `qwqnt.dependencies`.
 
