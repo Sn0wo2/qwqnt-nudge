@@ -13,10 +13,10 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
-    "@qwqnt-community/hako-types": "github:qwqnt-community/plugin-types#hako",
+    "@qwqnt-community/hako-types": "git+https://github.com/qwqnt-community/plugin-types.git",
     "@qwqnt/types": "github:qwqnt-community/types",
     "@types/node": "^26.1.1",
-    "electron": "^43.1.1",
+    "electron": "^43.2.0",
     "qwqnt-ipc-interceptor": "github:qwqnt-community/qwqnt-ipc-interceptor",
     "typescript": "^7.0.2",
     "vite": "^8.1.5"

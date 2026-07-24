@@ -4,7 +4,7 @@
     "src/main/**/*",
     "src/global.d.ts",
     "node_modules/qwqnt-ipc-interceptor/src/types/proxyIpcMessage.ts",
-    "node_modules/@qwqnt-community/hako-types/main.d.ts"
+    "node_modules/@qwqnt-community/hako-types/types/hako/main.d.ts"
   ],
   "compilerOptions": {
     "composite": true,
