@@ -1,25 +1,20 @@
 import { RECORD_SEARCH_KEYS } from "./constants";
 import type { MsgRecord } from "./types";
 
-interface VueInstance {
-  __VUE__?: unknown[] | unknown;
-  __vueParentComponent?: unknown;
-  [k: string]: unknown;
-}
+type VueElement = HTMLElement & { __vueParentComponent?: unknown };
 
-
-export function getVueInstances(el: Element): VueInstance[] {
-  const out: VueInstance[] = [];
-  const seen = new Set<VueInstance>();
-  const vueEl = el as unknown as VueInstance;
+export function getVueInstances(el: Element): unknown[] {
+  const out: unknown[] = [];
+  const seen = new Set<unknown>();
+  const vueEl = el as VueElement;
   const arr = vueEl.__VUE__ ?? [];
   for (const i of Array.isArray(arr) ? arr : [arr])
-    if (i && !seen.has(i as VueInstance)) {
-      seen.add(i as VueInstance);
-      out.push(i as VueInstance);
+    if (i && !seen.has(i)) {
+      seen.add(i);
+      out.push(i);
     }
   const pc = vueEl.__vueParentComponent;
-  if (pc && !seen.has(pc as VueInstance)) out.push(pc as VueInstance);
+  if (pc && !seen.has(pc)) out.push(pc);
   return out;
 }
 
@@ -29,7 +24,10 @@ export function probeVueValue(el: Element, paths: string[]): unknown {
       try {
         const v = p
           .split(".")
-          .reduce((o: unknown, k: string) => (o as Record<string, unknown>)?.[k], inst);
+          .reduce(
+            (o: unknown, k: string) => (o as Record<string, unknown>)?.[k],
+            inst,
+          );
         if (v != null) return v;
       } catch {}
     }
@@ -40,10 +38,10 @@ export function isMsgRecord(v: unknown): v is MsgRecord {
   const r = v as Record<string, unknown>;
   return Boolean(
     v &&
-      typeof v === "object" &&
-      typeof r.msgId === "string" &&
-      typeof r.msgSeq === "string" &&
-      Array.isArray(r.elements),
+    typeof v === "object" &&
+    typeof r.msgId === "string" &&
+    typeof r.msgSeq === "string" &&
+    Array.isArray(r.elements),
   );
 }
 
@@ -91,7 +89,14 @@ export function findMsgRecord(el: Element): MsgRecord | null {
       ...Array.from(container.querySelectorAll("*")).slice(0, 80),
     );
   }
-  const directPaths = ["props.msgRecord", "ctx.msgRecord", "proxy.msgRecord"];
+  const directPaths = [
+    "props.msgRecord",
+    "ctx.msgRecord",
+    "proxy.msgRecord",
+    "props.message",
+    "ctx.message",
+    "proxy.message",
+  ];
   for (const c of candidates) {
     const d = probeVueValue(c, directPaths);
     if (isMsgRecord(d)) return d;

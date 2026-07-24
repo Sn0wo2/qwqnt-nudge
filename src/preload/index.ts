@@ -17,7 +17,6 @@ interface NudgeSendResult {
   result?: number;
 }
 
-
 const api = {
   getConfig: (): Promise<NudgeConfig> => ipcRenderer.invoke("nudge:get-config"),
   setConfig: (patch: Record<string, unknown>): void =>

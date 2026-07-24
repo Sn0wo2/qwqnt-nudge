@@ -50,6 +50,7 @@ export interface MsgRecord {
   senderUin?: string | number;
   peer?: { peerUid?: string; peerUin?: string | number; chatType?: number };
   sender?: { uin?: string | number };
+  sendType?: number;
   [k: string]: unknown;
 }
 
@@ -63,10 +64,12 @@ export interface AioData {
   contact?: { chatType?: number };
   header?: {
     chatType?: number;
+    type?: number;
     peerUid?: string;
     peerUin?: string | number;
     uin?: string | number;
     uid?: string;
+    contact?: { chatType?: number };
     peer?: { chatType?: number; peerUid?: string; peerUin?: string | number };
   };
   [k: string]: unknown;
@@ -77,6 +80,7 @@ export interface ChatContext {
   aioData: AioData | null;
   chatType: number;
   isTemporary: boolean;
+  selfUin: string;
 }
 
 export type PokeTarget =

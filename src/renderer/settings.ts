@@ -15,6 +15,11 @@ interface SettingsConfig {
 
 type SelectedEvent = CustomEvent<{ value: string }>;
 
+function buildPatch(path: string, value: unknown): Record<string, unknown> {
+  const [ns, key] = path.split(".");
+  return ns && key ? { [ns]: { [key]: value } } : { [path]: value };
+}
+
 function readConfigValue(config: SettingsConfig, path: string): unknown {
   return path.split(".").reduce<unknown>((value, key) => {
     if (!value || typeof value !== "object") return undefined;
@@ -105,7 +110,7 @@ export async function renderSettings(): Promise<void> {
       if (!control || !path) return;
       const active = !control.hasAttribute("is-active");
       control.toggleAttribute("is-active", active);
-      api.setConfig({ [path]: active });
+      api.setConfig(buildPatch(path, active));
     });
 
     view.addEventListener("change", (event) => {
@@ -115,7 +120,7 @@ export async function renderSettings(): Promise<void> {
       const value = event.target.hasAttribute("data-list")
         ? event.target.value.split(/[,\s]+/).filter(Boolean)
         : Number(event.target.value);
-      api.setConfig({ [path]: value });
+      api.setConfig(buildPatch(path, value));
     });
 
     const select = view.querySelector<HTMLElement>(
@@ -125,7 +130,7 @@ export async function renderSettings(): Promise<void> {
     select?.addEventListener("selected", (event) => {
       if (applyingListMode) return;
       const value = (event as SelectedEvent).detail.value;
-      api.setConfig({ [select.dataset.path!]: value });
+      api.setConfig(buildPatch(select.dataset.path!, value));
     });
 
     const apply = (config: SettingsConfig) => {

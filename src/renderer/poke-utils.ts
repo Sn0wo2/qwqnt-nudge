@@ -16,12 +16,27 @@ export function getChatContext(avatar: Element): ChatContext {
   const aioEl =
     document.querySelector(".aio.vue-component") ??
     document.querySelector(".aio");
-  const aioData = (aioEl
-    ? probeVueValue(aioEl, [
-        "proxy.commonAioStore.curAioData",
-        "ctx.commonAioStore.curAioData",
-      ])
-    : null) as AioData | null;
+  const aioData = (
+    aioEl
+      ? probeVueValue(aioEl, [
+          "proxy.commonAioStore.curAioData",
+          "ctx.commonAioStore.curAioData",
+        ])
+      : null
+  ) as AioData | null;
+
+  const selfUin = String(
+    aioEl
+      ? (probeVueValue(aioEl, [
+          "proxy.selfUin",
+          "ctx.selfUin",
+          "proxy.authData.uin",
+          "ctx.authData.uin",
+          "proxy.commonAioStore.authData.uin",
+          "ctx.commonAioStore.authData.uin",
+        ]) ?? "")
+      : "",
+  );
 
   const h = aioData?.header ?? {};
   const chatTypes = [
@@ -31,7 +46,9 @@ export function getChatContext(avatar: Element): ChatContext {
     aioData?.peer?.chatType,
     aioData?.contact?.chatType,
     h.chatType,
+    h.type,
     h.peer?.chatType,
+    h.contact?.chatType,
     record?.chatType,
     record?.peer?.chatType,
   ]
@@ -42,18 +59,20 @@ export function getChatContext(avatar: Element): ChatContext {
     aioData,
     chatType: chatTypes[0] ?? 0,
     isTemporary: chatTypes.some((t) => TEMPORARY_CHAT_TYPES.has(t)),
+    selfUin: /^\d+$/.test(selfUin) ? selfUin : "",
   };
 }
 
 export function buildPokePayload(ctx: ChatContext): PokePayload | null {
   if (ctx.isTemporary) return null;
-  const { record, aioData, chatType } = ctx;
+  const { record, aioData, chatType, selfUin } = ctx;
   const puid =
     record?.peerUid ??
     record?.peer?.peerUid ??
     aioData?.peerUid ??
     aioData?.peer?.peerUid ??
     aioData?.header?.peerUid ??
+    aioData?.header?.uid ??
     "";
   const puin = [
     record?.peerUin,
@@ -67,29 +86,56 @@ export function buildPokePayload(ctx: ChatContext): PokePayload | null {
     aioData?.header?.peerUid,
   ].find((v) => /^\d+$/.test(String(v)));
 
+  const senderUin = String(record?.senderUin ?? record?.sender?.uin ?? "");
+
   if (chatType === 2) {
     const guin = String(puin || puid);
-    if (!guin) return null;
-    const tuin = record?.senderUin ?? record?.sender?.uin;
-    if (!tuin) return null;
-    return { chatType: 2, peerUid: guin, targetUin: String(tuin) };
+    const groupTuin =
+      senderUin && senderUin !== "0"
+        ? senderUin
+        : Number(record?.sendType) === 1 && selfUin
+          ? selfUin
+          : "";
+    if (!guin || !groupTuin) return null;
+    return { chatType: 2, peerUid: guin, targetUin: groupTuin };
   }
   if (chatType === 1) {
-    const tuin = record?.senderUin ?? record?.sender?.uin ?? puin;
-    return tuin
-      ? { chatType: 1, peerUid: puid, targetUin: String(tuin) }
-      : null;
+    const tuin =
+      senderUin && senderUin !== "0" ? senderUin : String(puin ?? "");
+    if (!tuin) return null;
+    return { chatType: 1, peerUid: puid, targetUin: tuin };
   }
   return null;
 }
 
 export function resolvePokeTarget(ev: Event) {
   const avatar = getAvatarFromEvent(ev);
-  if (!avatar) return null;
+  if (!avatar) {
+    log("resolvePokeTarget: no avatar found");
+    return null;
+  }
   const ctx = getChatContext(avatar);
-  if (ctx.isTemporary) return "suppress" as const;
+  log(
+    "resolvePokeTarget: chatType=",
+    ctx.chatType,
+    "isTemporary=",
+    ctx.isTemporary,
+    "record=",
+    !!ctx.record,
+    "selfUin=",
+    ctx.selfUin || "(empty)",
+  );
+  if (ctx.isTemporary) {
+    log("resolvePokeTarget: temporary chat, suppressing");
+    return "suppress" as const;
+  }
   const payload = buildPokePayload(ctx);
-  return payload ? ({ avatar, payload } as const) : null;
+  if (!payload) {
+    log("resolvePokeTarget: buildPokePayload returned null");
+    return null;
+  }
+  log("resolvePokeTarget: payload built", JSON.stringify(payload));
+  return { avatar, payload } as const;
 }
 
 export function sendPoke(
